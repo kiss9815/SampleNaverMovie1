@@ -4,6 +4,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -39,12 +41,15 @@ public class NetworkManager {
     private static final int MESSAGE_FAILURE = 1;
 
    static class NetworkHandler extends Handler {
-        public NetworkHandler(){
+       NetworkManager manager;
+        public NetworkHandler(NetworkManager manager){
             super();
+            this.manager = manager;
         }
 
-       public NetworkHandler(Looper looper){
+       public NetworkHandler(Looper looper, NetworkManager manager){
            super(looper);
+           this.manager = manager;
        }
 
        @Override
@@ -58,10 +63,11 @@ public class NetworkManager {
                    r.sendFailure();
                    break;
            }
+           manager.mRequestList.remove(r);
        }
    }
 
-    Handler mHandler = new NetworkHandler(Looper.getMainLooper());
+    Handler mHandler = new NetworkHandler(Looper.getMainLooper(), this);
 
     public void sendSuccess(NetworkRequest request){
         Message msg = mHandler.obtainMessage(MESSAGE_SUCESS, request);
@@ -73,9 +79,31 @@ public class NetworkManager {
         mHandler.sendMessage(msg);
     }
 
+    List<NetworkRequest> mRequestList = new ArrayList<NetworkRequest>();
+
     public <T> void getNetworkData(NetworkRequest<T> request, OnResultListener<T> listener){
+        mRequestList.add(request);
+
         request.setManager(this);
         request.setOnResultListener(listener);
         mExecutor.execute(request);
+    }
+
+    void postCancelProcess(NetworkRequest request) {
+        mRequestList.remove(request);
+    }
+
+
+    public void cancelAll(Object tag) {
+        List<NetworkRequest> removeList = new ArrayList<NetworkRequest>();
+        for (NetworkRequest r : mRequestList) {
+            if (tag == null || r.getTag().equals(tag)) {
+                removeList.add(r);
+            }
+        }
+
+        for (NetworkRequest r : removeList) {
+            r.cancel();
+        }
     }
 }

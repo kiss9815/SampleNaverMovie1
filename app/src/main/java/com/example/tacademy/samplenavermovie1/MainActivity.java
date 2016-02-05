@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
 //                                mAdapter.add(item);
 //                            }
                         mAdapter.addAll(result.items);
+
                     }
 
                     @Override
